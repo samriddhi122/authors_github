@@ -50,6 +50,10 @@ const Dashboard = ({ user, onLogout }) => {
 
   // Preference State
   const [theme, setTheme] = useState(localStorage.getItem('storyhub_theme') || 'light');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredRepos = repos.filter(repo => repo.name.toLowerCase().includes(searchQuery.toLowerCase()) || (repo.description && repo.description.toLowerCase().includes(searchQuery.toLowerCase())));
+  const filteredPublicRepos = publicRepos.filter(repo => repo.name.toLowerCase().includes(searchQuery.toLowerCase()) || (repo.description && repo.description.toLowerCase().includes(searchQuery.toLowerCase())));
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -389,25 +393,35 @@ const Dashboard = ({ user, onLogout }) => {
 
         {currentView === 'workspace' && (
           <>
-            <header className="page-header">
-              <h2>Your Stories</h2>
-              <button className="btn-primary pulse-hover" onClick={() => setShowModal(true)}>
-                + New Story
-              </button>
-            </header>
+            <div className="hero-banner glass-card">
+              <div className="hero-content">
+                <h1 style={{fontSize: '2.5rem', marginBottom: '0.5rem', background: 'linear-gradient(135deg, var(--primary), #ed8936)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>Welcome back, {user.firstName}!</h1>
+                <p style={{fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '1.5rem'}}>Manage your stories, review pull requests, and explore the universe of community literature.</p>
+                <div className="search-bar-container">
+                  <input 
+                    type="text" 
+                    className="search-input" 
+                    placeholder="Search your stories..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <button className="btn-primary pulse-hover" onClick={() => setShowModal(true)}>+ New Story</button>
+                </div>
+              </div>
+            </div>
 
             {loading ? (
               <div className="loading">Loading stories...</div>
             ) : error ? (
               <div className="error">{error}</div>
-            ) : repos.length === 0 ? (
+            ) : filteredRepos.length === 0 ? (
               <div className="empty-state">
-                <p>You haven't written any stories yet.</p>
-                <button className="btn-outline" onClick={() => setShowModal(true)}>Write your first story</button>
+                <p>{searchQuery ? "No stories exactly matched your search." : "You haven't written any stories yet."}</p>
+                {!searchQuery && <button className="btn-outline" onClick={() => setShowModal(true)}>Write your first story</button>}
               </div>
             ) : (
               <div className="repo-grid">
-                {repos.map((repo) => (
+                {filteredRepos.map((repo) => (
                   <div key={repo._id} className="repo-card glass-card">
                     <div className="card-header">
                       <h3>{repo.name}</h3>
@@ -466,17 +480,29 @@ const Dashboard = ({ user, onLogout }) => {
 
         {currentView === 'explore' && (
           <>
-            <div className="page-header">
-              <h2>Community Discoveries</h2>
+            <div className="hero-banner glass-card" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(168, 85, 247, 0.1))', borderLeftColor: '#8b5cf6' }}>
+              <div className="hero-content">
+                <h1 style={{fontSize: '2.5rem', marginBottom: '0.5rem'}}>Community Discoveries</h1>
+                <p style={{fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '1.5rem'}}>Fork public stories, contribute to different authors, and create collaborative literature.</p>
+                <div className="search-bar-container">
+                  <input 
+                    type="text" 
+                    className="search-input" 
+                    placeholder="Search community stories..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
             
             <div className="repo-grid">
-              {publicRepos.length === 0 ? (
+              {filteredPublicRepos.length === 0 ? (
                 <div className="empty-state">
-                  <p>No public stories have been published yet.</p>
+                  <p>{searchQuery ? "No community stories exactly matched your search." : "No public stories have been published yet."}</p>
                 </div>
               ) : (
-                publicRepos.map(repo => (
+                filteredPublicRepos.map(repo => (
                   <div key={repo._id} className="glass-card repo-card">
                     <div className="card-header">
                       <h3>{repo.name} {repo.forkedFrom && <span style={{fontSize: '0.7rem', color: 'var(--text-secondary)'}}>(Forked)</span>}</h3>

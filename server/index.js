@@ -34,6 +34,9 @@ app.use(passport.session());
 
 // Routes
 app.use('/auth', require('./routes/auth'));
+app.use('/repos', require('./routes/repo'));
+app.use('/repos/:repoId/commits', require('./routes/commit'));
+app.use('/repos/:repoId/branches', require('./routes/branch'));
 
 app.get('/', (req, res) => {
     res.send('API is running...');

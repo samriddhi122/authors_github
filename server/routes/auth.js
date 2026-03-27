@@ -39,4 +39,34 @@ router.get('/user', (req, res) => {
     res.send(req.user);
 });
 
+const { getGoogleApis } = require('../utils/googleDocs');
+
+// @desc    Test Google Drive API Access
+// @route   GET /auth/drive-test
+// Note:    This fetches the top 5 files from the user's Google Drive to verify API access
+router.get('/drive-test', async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'You must be logged in to test Drive API' });
+    }
+
+    try {
+        const { drive } = getGoogleApis(req.user.accessToken, req.user.refreshToken);
+        
+        const response = await drive.files.list({
+            pageSize: 5,
+            fields: 'nextPageToken, files(id, name)',
+        });
+        
+        const files = response.data.files;
+        if (files.length) {
+            res.json({ success: true, files });
+        } else {
+            res.json({ success: true, message: 'No files found in Google Drive.' });
+        }
+    } catch (error) {
+        console.error('The API returned an error: ' + error);
+        res.status(500).json({ success: false, error: 'Failed to access Google Drive API' });
+    }
+});
+
 module.exports = router;

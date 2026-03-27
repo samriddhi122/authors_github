@@ -4,39 +4,39 @@ This document outlines the step-by-step plan for building StoryHub, prioritizing
 
 ## Phase 1: Setup (2–3 Days)
 **Goal:** Establish the foundational infrastructure.
-- [ ] Initialize backend project (Node.js/Express or Django).
-- [ ] Set up PostgreSQL database and ORM/Query Builder.
-- [ ] Set up Google Cloud Project.
-- [ ] Enable Google Drive API and Google Docs API.
-- [ ] Configure OAuth 2.0 credentials and authorized redirect URIs.
+- [x] Initialize backend project (Node.js/Express).
+- [x] Set up MongoDB database and Mongoose ORM.
+- [x] Set up Google Cloud Project.
+- [x] Enable Google Drive API and Google Docs API.
+- [x] Configure OAuth 2.0 credentials and authorized redirect URIs.
 
 ## Phase 2: Authentication (2 Days)
 **Goal:** Implement secure user login and token management.
-- [ ] Implement Google login flow on the frontend.
-- [ ] Handle OAuth callback on the backend.
-- [ ] Store user details, `access_token`, and `refresh_token` securely in the database.
-- [ ] Verify Drive API access using stored tokens.
+- [x] Implement Google login flow on the frontend (Session/Passport).
+- [x] Handle OAuth callback on the backend.
+- [x] Store user details, `access_token`, and `refresh_token` securely in the database.
+- [x] Verify Drive API access using stored tokens (added `/auth/drive-test`).
 
 ## Phase 3: Basic Repository System (3–4 Days)
 **Goal:** Allow users to create and view their stories.
-- [ ] Build "Create Story" UI component.
-- [ ] Backend endpoint to handle repository creation.
-- [ ] Implementation of Drive API to create a dedicated folder for each story.
-- [ ] Generate the initial Document (`chapter1`) via Docs API.
-- [ ] Build Dashboard UI to display the user's repository list.
+- [x] Build "Create Story" UI component.
+- [x] Backend endpoint to handle repository creation.
+- [x] Implementation of Drive API to create a dedicated folder for each story.
+- [x] Generate the initial Document (`chapter1`) via Docs API.
+- [x] Build Dashboard UI to display the user's repository list.
 
 ## Phase 4: Editing Flow (2 Days)
 **Goal:** Enable users to write content seamlessly.
-- [ ] Implement "Edit" action from the Repository view.
-- [ ] Route user directly to Google Docs editor (`docs.google.com/document/d/{doc_id}/edit`).
-- [ ] Maintain dynamic `doc_id` mappings in the frontend to load correct document constraints.
+- [x] Implement "Edit" action from the Repository view.
+- [x] Route user directly to Google Docs editor (`docs.google.com/document/d/{doc_id}/edit`).
+- [x] Maintain dynamic `doc_id` mappings in the frontend to load correct document constraints.
 
 ## Phase 5: Commit System (4–5 Days)
 **Goal:** Introduce snapshot-based version control.
-- [ ] Design and implement the "Commit" UI button and message input.
-- [ ] Backend logic to trigger Google Drive document duplication (copying `doc_id`).
-- [ ] Save new `doc_id` as a discrete commit record in the database.
-- [ ] Build Commit History UI to visualize past versions.
+- [x] Design and implement the "Commit" UI button and message input.
+- [x] Backend logic to trigger Google Drive document duplication (copying `doc_id`).
+- [x] Save new `doc_id` as a discrete commit record in the database.
+- [x] Build Commit History UI to visualize past versions.
 
 ## Phase 6: Branching (4 Days)
 **Goal:** Support diverging storylines.

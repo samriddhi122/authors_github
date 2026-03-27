@@ -20,7 +20,7 @@ The system acts as a version control layer specifically tailored for writing.
    - **Tech Stack:** Node.js (Express) or Django
    - **Responsibilities:** Handles Authentication, Repository Logic, Commit/Branch Logic, and API Integrations.
 3. **Database**
-   - **Tech Stack:** PostgreSQL (Recommended)
+   - **Tech Stack:** MongoDB (Mongoose)
    - **Responsibilities:** Stores details for Users, Repositories, Branches, Commits, and Google Doc references.
 4. **External Services**
    - **Google OAuth 2.0:** Handles user login and identity.

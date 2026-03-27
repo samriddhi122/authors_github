@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import './App.css';
+import Dashboard from './components/Dashboard';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -38,19 +39,12 @@ function App() {
   };
 
   return (
-    <div className="container" style={{ paddingTop: '8rem', textAlign: 'center' }}>
-      <h1 style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>Writer's Platform</h1>
-
+    <>
       {user ? (
-        <div>
-          <h2>Welcome, {user.displayName}</h2>
-          <img src={user.image} alt={user.displayName} style={{ borderRadius: '50%', width: '100px' }} />
-          <p style={{ marginTop: '2rem' }}>
-            <button className="btn" onClick={handleLogout} style={{ backgroundColor: '#ef4444' }}>Logout</button>
-          </p>
-        </div>
+        <Dashboard user={user} onLogout={handleLogout} />
       ) : (
-        <div>
+        <div className="container" style={{ paddingTop: '8rem', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>Writer's Platform</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1.25rem', maxWidth: '600px', margin: '0 auto 2rem' }}>
             A specialized open-source platform for writers. Login to start writing.
           </p>
@@ -59,8 +53,8 @@ function App() {
           </button>
         </div>
       )}
-    </div>
-  )
+    </>
+  );
 }
 
 export default App

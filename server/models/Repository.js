@@ -28,6 +28,11 @@ const RepositorySchema = new mongoose.Schema({
         enum: ['public', 'private'],
         default: 'public'
     },
+    forkedFrom: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Repository',
+        required: false
+    },
     createdAt: {
         type: Date,
         default: Date.now

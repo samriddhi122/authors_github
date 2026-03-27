@@ -68,5 +68,13 @@ This document tracks the actual progress of the StoryHub project against the ori
   - 🌸 **Floral Mode** (Soft Lilac and Rose Pink)
 - **Persistence Layer:** Bound the CSS logic directly to a Dropdown Picker engineered into the Dashboard Navbar. User preferences are hot-swapped instantaneously and physically cached inside the browser's `localStorage` to endure across sessions.
 
+## Phase 9: Community & Pull Requests (Forks)
+**Status:** ✅ Completed
+
+- **Drive Permission Boundaries:** Rewrote `POST /repos` to physically reach into Google Servers and flag base Folders globally readable when `visibility === 'public'`, eliminating native 403 API crashes during cross-account copying.
+- **The "Explore" Grid:** Segmented the main React Dashboard with isolated Tabs (`workspace` / `explore`), actively querying `GET /repos/public` to render a grid of community storylines created by other registered users.
+- **One-Click Forking:** Engineered the `POST /repos/:repoId/fork` endpoint that natively clones a public Google Doc across Google Accounts safely, and maps it directly to the caller's distinct Dashboard workspace as a new dependent repository instance.
+- **Pull Requests (PRs):** Formulated the `PullRequest` schema with mapping constraints. Users can confidently hit "Submit Pull Request" on their forks to propose Branch additions, and original authors receive notification cards seamlessly under "Review PRs" dynamically empowering them to 1-click Fast-Forward merge the community patches into their Main document architectures securely!
+
 ---
-*Last updated: Phase 8 Dynamic Theming*
+*Last updated: Phase 9 Full Community Collab*

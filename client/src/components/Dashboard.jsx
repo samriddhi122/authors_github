@@ -36,6 +36,18 @@ const Dashboard = ({ user, onLogout }) => {
   const [mergeTarget, setMergeTarget] = useState('');
   const [merging, setMerging] = useState(false);
 
+  // Community State
+  const [currentView, setCurrentView] = useState('workspace');
+  const [publicRepos, setPublicRepos] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+
+  // Pull Request State
+  const [showPrModal, setShowPrModal] = useState(false);
+  const [prs, setPrs] = useState({ incoming: [], outgoing: [] });
+  const [newPrTitle, setNewPrTitle] = useState('');
+  const [newPrDesc, setNewPrDesc] = useState('');
+  const [prSourceBranchId, setPrSourceBranchId] = useState('');
+
   // Preference State
   const [theme, setTheme] = useState(localStorage.getItem('storyhub_theme') || 'light');
 
@@ -46,7 +58,16 @@ const Dashboard = ({ user, onLogout }) => {
 
   useEffect(() => {
     fetchRepos();
+    fetchNotifications();
   }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/repos/notifications/pulls', { credentials: 'include' });
+      const data = await res.json();
+      if (data.success) setNotifications(data.notifications);
+    } catch (err) { console.error('Error fetching notifications'); }
+  };
 
   const fetchRepos = async () => {
     try {
@@ -220,6 +241,111 @@ const Dashboard = ({ user, onLogout }) => {
     } catch (err) { alert('Merge error'); } finally { setMerging(false); }
   };
 
+  const fetchCommunityRepos = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/repos/public', { credentials: 'include' });
+      const data = await res.json();
+      if (data.success) setPublicRepos(data.repositories);
+    } catch (err) { console.error('Error fetching community repos', err); }
+  };
+
+  const handleFork = async (repoId) => {
+    if (!window.confirm('Fork this story into your own workspace? This isolates a new physical copy in your Google Drive!')) return;
+    try {
+      const res = await fetch(`http://localhost:5000/repos/${repoId}/fork`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Successfully forked the storyline to your Workspace!');
+        fetchRepos();
+        setCurrentView('workspace');
+      } else {
+        alert(data.error);
+      }
+    } catch (err) { alert('Failed to fork repository'); }
+  };
+
+  const loadPrs = async (repo) => {
+    setActiveRepo(repo);
+    try {
+      const res = await fetch(`http://localhost:5000/repos/${repo._id}/pulls`, { credentials: 'include' });
+      const data = await res.json();
+      if (data.success) {
+        setPrs({ incoming: data.incoming, outgoing: data.outgoing });
+        setShowPrModal(true);
+      } else {
+        alert(data.error);
+      }
+    } catch (err) { alert('Error loading Pull Requests'); }
+  };
+
+  const handleAcceptPr = async (prId) => {
+    if (!window.confirm("Merge this author's story branch securely into your Google Document timeline natively?")) return;
+    try {
+      const res = await fetch(`http://localhost:5000/repos/${activeRepo._id}/pulls/${prId}/merge`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('PR successfully merged! Your active document has successfully inherited their exact codebase edits!');
+        setShowPrModal(false);
+        fetchRepos();
+      } else {
+        alert(data.error);
+      }
+    } catch (err) { alert('Error merging PR dynamically!'); }
+  };
+
+  const handleAcceptGlobalPr = async (pr) => {
+    if (!window.confirm("Merge this author's story branch securely into your Google Document timeline natively?")) return;
+    try {
+      const res = await fetch(`http://localhost:5000/repos/${pr.targetRepoId._id}/pulls/${pr._id}/merge`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('PR successfully merged! Your workspace has successfully inherited their exact codebase edits!');
+        fetchNotifications();
+        fetchRepos();
+        if (showPrModal) setShowPrModal(false);
+      } else {
+        alert(data.error);
+      }
+    } catch (err) { alert('Error merging global PR!'); }
+  };
+
+  const handleSubmitPr = async (e) => {
+    e.preventDefault();
+    if (!newPrTitle || !prSourceBranchId) return alert('Title and Source Branch required');
+    try {
+      const res = await fetch(`http://localhost:5000/repos/${activeRepo.forkedFrom}/pulls`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          sourceRepoId: activeRepo._id, 
+          sourceBranchId: prSourceBranchId, 
+          title: newPrTitle, 
+          description: newPrDesc 
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Pull Request submitted successfully to original author!');
+        setShowPrModal(false);
+        setNewPrTitle('');
+        setNewPrDesc('');
+      } else {
+        alert(data.error);
+      }
+    } catch (err) { alert('PR Submission Error'); }
+  };
+
   return (
     <div className="dashboard">
       <nav className="navbar">
@@ -242,70 +368,187 @@ const Dashboard = ({ user, onLogout }) => {
       </nav>
 
       <main className="main-content">
-        <header className="page-header">
-          <h2>Your Stories</h2>
-          <button className="btn-primary pulse-hover" onClick={() => setShowModal(true)}>
-            + New Story
+        <div className="view-tabs" style={{ display: 'flex', gap: '1.5rem', borderBottom: '2px solid var(--border)', marginBottom: '2rem' }}>
+          <button 
+            onClick={() => setCurrentView('workspace')} 
+            style={{ background: 'transparent', color: currentView === 'workspace' ? 'var(--primary)' : 'var(--text-secondary)', fontWeight: '600', padding: '0.5rem 0', borderBottom: currentView === 'workspace' ? '2px solid var(--primary)' : 'none', marginBottom: '-2px' }}>
+            My Workspace
           </button>
-        </header>
+          <button 
+            onClick={() => { setCurrentView('explore'); fetchCommunityRepos(); }} 
+            style={{ background: 'transparent', color: currentView === 'explore' ? 'var(--primary)' : 'var(--text-secondary)', fontWeight: '600', padding: '0.5rem 0', borderBottom: currentView === 'explore' ? '2px solid var(--primary)' : 'none', marginBottom: '-2px' }}>
+            Explore Community
+          </button>
+          <button 
+            onClick={() => { setCurrentView('notifications'); fetchNotifications(); }} 
+            style={{ position: 'relative', background: 'transparent', color: currentView === 'notifications' ? 'var(--primary)' : 'var(--text-secondary)', fontWeight: '600', padding: '0.5rem 0', borderBottom: currentView === 'notifications' ? '2px solid var(--primary)' : 'none', marginBottom: '-2px' }}>
+            Notifications
+            {notifications.length > 0 && <span style={{ position: 'absolute', top: '-2px', right: '-15px', background: 'var(--primary)', color: 'white', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px' }}>{notifications.length}</span>}
+          </button>
+        </div>
 
-        {loading ? (
-          <div className="loading">Loading stories...</div>
-        ) : error ? (
-          <div className="error">{error}</div>
-        ) : repos.length === 0 ? (
-          <div className="empty-state">
-            <p>You haven't written any stories yet.</p>
-            <button className="btn-outline" onClick={() => setShowModal(true)}>Write your first story</button>
-          </div>
-        ) : (
-          <div className="repo-grid">
-            {repos.map((repo) => (
-              <div key={repo._id} className="repo-card glass-card">
-                <div className="card-header">
-                  <h3>{repo.name}</h3>
-                  <span className={`badge ${repo.visibility}`}>{repo.visibility}</span>
-                </div>
-                <p className="card-desc">{repo.description || 'No description provided.'}</p>
-                <div className="card-footer">
-                  <span className="date">Created {new Date(repo.createdAt).toLocaleDateString()}</span>
-                </div>
-                <div className="card-actions">
-                  <button 
-                    className="btn-outline btn-sm" 
-                    onClick={() => loadBranches(repo)}
-                  >
-                    Branch
-                  </button>
-                  <button 
-                    className="btn-outline btn-sm" 
-                    onClick={() => loadHistory(repo)}
-                  >
-                    History
-                  </button>
-                  <button 
-                    className="btn-outline btn-sm" 
-                    onClick={() => { setActiveRepo(repo); setShowCommitModal(true); }}
-                    disabled={!repo.currentDocId}
-                  >
-                    Commit
-                  </button>
-                  <a 
-                    href={repo.currentDocId ? `https://docs.google.com/document/d/${repo.currentDocId}/edit` : `https://drive.google.com/drive/folders/${repo.driveFolderId}`} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="btn-primary btn-sm docs-link-btn"
-                    title={repo.currentDocId ? "Edit Story in Google Docs" : "Open Google Drive Folder"}
-                  >
-                    {repo.currentDocId ? "Edit ⇗" : "Folder ⇗"}
-                  </a>
-                </div>
+        {currentView === 'workspace' && (
+          <>
+            <header className="page-header">
+              <h2>Your Stories</h2>
+              <button className="btn-primary pulse-hover" onClick={() => setShowModal(true)}>
+                + New Story
+              </button>
+            </header>
+
+            {loading ? (
+              <div className="loading">Loading stories...</div>
+            ) : error ? (
+              <div className="error">{error}</div>
+            ) : repos.length === 0 ? (
+              <div className="empty-state">
+                <p>You haven't written any stories yet.</p>
+                <button className="btn-outline" onClick={() => setShowModal(true)}>Write your first story</button>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="repo-grid">
+                {repos.map((repo) => (
+                  <div key={repo._id} className="repo-card glass-card">
+                    <div className="card-header">
+                      <h3>{repo.name}</h3>
+                      <span className={`badge ${repo.visibility}`}>{repo.visibility}</span>
+                    </div>
+                    <p className="card-desc">{repo.description || 'No description provided.'}</p>
+                    <div className="card-footer">
+                      <span className="date">Created {new Date(repo.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <div className="card-actions">
+                      <button 
+                        className="btn-outline btn-sm" 
+                        onClick={() => loadBranches(repo)}
+                      >
+                        Branch
+                      </button>
+                      <button 
+                        className="btn-outline btn-sm" 
+                        onClick={() => loadHistory(repo)}
+                      >
+                        History
+                      </button>
+                      <button 
+                        className="btn-outline btn-sm" 
+                        onClick={() => { setActiveRepo(repo); setShowCommitModal(true); }}
+                        disabled={!repo.currentDocId}
+                      >
+                        Commit
+                      </button>
+                      <a 
+                        href={repo.currentDocId ? `https://docs.google.com/document/d/${repo.currentDocId}/edit` : `https://drive.google.com/drive/folders/${repo.driveFolderId}`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="btn-primary btn-sm docs-link-btn"
+                        title={repo.currentDocId ? "Edit Story in Google Docs" : "Open Google Drive Folder"}
+                        style={{marginTop: '0.5rem'}}
+                      >
+                        {repo.currentDocId ? "Edit ⇗" : "Folder ⇗"}
+                      </a>
+                    </div>
+                    <div className="card-actions" style={{ marginTop: '0', paddingTop: '0.5rem', borderTop: 'none' }}>
+                      <button 
+                        className="btn-outline btn-sm" 
+                        onClick={() => { loadBranches(repo); loadPrs(repo); }}
+                        style={{ width: '100%', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(168, 85, 247, 0.1))', borderColor: 'var(--primary)' }}
+                      >
+                        {repo.forkedFrom ? 'Submit Pull Request 🚀' : 'Review Pull Requests 🚀'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {currentView === 'explore' && (
+          <>
+            <div className="page-header">
+              <h2>Community Discoveries</h2>
+            </div>
+            
+            <div className="repo-grid">
+              {publicRepos.length === 0 ? (
+                <div className="empty-state">
+                  <p>No public stories have been published yet.</p>
+                </div>
+              ) : (
+                publicRepos.map(repo => (
+                  <div key={repo._id} className="glass-card repo-card">
+                    <div className="card-header">
+                      <h3>{repo.name} {repo.forkedFrom && <span style={{fontSize: '0.7rem', color: 'var(--text-secondary)'}}>(Forked)</span>}</h3>
+                      <span className="badge public">Public</span>
+                    </div>
+                    <p style={{ margin: '0 0 1rem 0', fontWeight: '500', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <img src={repo.ownerId?.image} alt={repo.ownerId?.displayName} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                      {repo.ownerId?.displayName || 'Unknown Author'}
+                    </p>
+                    <p className="card-desc">{repo.description}</p>
+                    
+                    <div className="card-actions" style={{ borderTop: 'none', paddingTop: 0, display: 'flex', gap: '0.5rem' }}>
+                      <a 
+                        href={`https://docs.google.com/document/d/${repo.currentDocId}/view`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="btn-outline btn-sm"
+                        style={{flex: 1, textAlign: 'center', textDecoration: 'none', background: 'var(--surface)'}}
+                      >
+                        📖 Read Story ⇗
+                      </a>
+                      
+                      {/* {repo.ownerId?._id !== user._id && ( */}
+                        <button className="btn-primary" onClick={() => handleFork(repo._id)} style={{ flex: 1, background: 'linear-gradient(to right, #8b5cf6, #d946ef)', border: 'none' }}>
+                          🍴 Fork Story
+                        </button>
+                      {/* )} */}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+
+        {currentView === 'notifications' && (
+          <>
+            <div className="page-header">
+              <h2>Pending Approvals</h2>
+            </div>
+            {notifications.length === 0 ? (
+              <div className="empty-state">
+                <p>You caught up on everything! No pending pull requests.</p>
+              </div>
+            ) : (
+              <div className="repo-grid">
+                {notifications.map(pr => (
+                  <div key={pr._id} className="glass-card repo-card" style={{ borderLeft: '4px solid var(--primary)' }}>
+                    <div className="card-header">
+                      <h3>{pr.title}</h3>
+                      <span className="badge public">PR</span>
+                    </div>
+                    <p style={{ margin: '0 0 1rem 0', fontWeight: '500', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <img src={pr.sourceRepoId?.ownerId?.image} alt={pr.sourceRepoId?.ownerId?.displayName} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                      {pr.sourceRepoId?.ownerId?.displayName || 'Unknown Author'} wants to merge into <strong>{pr.targetRepoId?.name}</strong>
+                    </p>
+                    <p className="card-desc" style={{ fontStyle: 'italic' }}>"{pr.description}"</p>
+                    
+                    <div className="card-actions" style={{ borderTop: 'none', paddingTop: 0, display: 'flex', gap: '0.5rem' }}>
+                      <button className="btn-primary" onClick={() => handleAcceptGlobalPr(pr)} style={{ width: '100%', background: 'linear-gradient(to right, #10b981, #059669)', border: 'none' }}>
+                         Check & Merge File Natively
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
 
+      {/* Create Repo Modal */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal glass-card bounce-in">
@@ -497,6 +740,63 @@ const Dashboard = ({ user, onLogout }) => {
                 {merging ? 'Executing Merge...' : '⚡ Merge Branches'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Pull Request Modal */}
+      {showPrModal && activeRepo && (
+        <div className="modal-overlay">
+          <div className="modal glass-card bounce-in">
+            <div className="modal-header" style={{ marginBottom: '1rem' }}>
+              <h2>{activeRepo.forkedFrom ? 'Submit Pull Request' : 'Review Pull Requests'}</h2>
+              <button className="close-btn" onClick={() => setShowPrModal(false)}>&times;</button>
+            </div>
+
+            {activeRepo.forkedFrom ? (
+              <form onSubmit={handleSubmitPr} className="create-form">
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                  Propose merging your story changes back into the original author's repository.
+                </p>
+                <div className="form-group">
+                  <label>Which of your branches do you want to submit?</label>
+                  <select value={prSourceBranchId} onChange={(e) => setPrSourceBranchId(e.target.value)} required>
+                    <option value="" disabled>Select branch...</option>
+                    {branches.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Pull Request Title</label>
+                  <input type="text" value={newPrTitle} onChange={(e) => setNewPrTitle(e.target.value)} required placeholder="e.g. Added a plot twist to Chapter 3" />
+                </div>
+                <div className="form-group">
+                  <label>Description (Optional)</label>
+                  <textarea value={newPrDesc} onChange={(e) => setNewPrDesc(e.target.value)} rows="3" placeholder="Describe what you altered..." />
+                </div>
+                <button type="submit" className="btn-primary" style={{ width: '100%' }}>Submit Pull Request ✨</button>
+              </form>
+            ) : (
+              <div>
+                <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Incoming PRs (Pending Review)</h3>
+                
+                {prs.incoming.filter(pr => pr.status === 'open').length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)' }}>No pending pull requests yet.</p>
+                ) : (
+                  <div className="history-list" style={{ maxHeight: '300px' }}>
+                    {prs.incoming.filter(pr => pr.status === 'open').map(pr => (
+                      <div key={pr._id} className="commit-item" style={{ alignItems: 'flex-start', paddingBottom: '1rem' }}>
+                        <div className="commit-content" style={{ background: 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
+                          <h4 className="commit-msg">{pr.title}</h4>
+                          <p className="commit-meta" style={{ marginBottom: '0.5rem' }}>From: <strong>{pr.sourceRepoId?.ownerId?.displayName || 'Unknown Author'}</strong></p>
+                          <p className="commit-meta" style={{ marginBottom: '1rem', fontStyle: 'italic' }}>{pr.description}</p>
+                          <button className="btn-primary btn-sm" onClick={() => handleAcceptPr(pr._id)} style={{ background: '#10b981', border: 'none', width: '100%' }}>Accept & Merge Native Doc</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

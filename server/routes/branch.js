@@ -3,7 +3,7 @@ const router = express.Router({ mergeParams: true });
 const Repository = require('../models/Repository');
 const Branch = require('../models/Branch');
 const Commit = require('../models/Commit');
-const { getGoogleApis, copyDocument } = require('../utils/googleDocs');
+const { getGoogleApis, copyDocument, makeFilePublic } = require('../utils/googleDocs');
 
 // Middleware to check authentication
 const ensureAuth = (req, res, next) => {
@@ -60,11 +60,16 @@ router.post('/', ensureAuth, async (req, res) => {
         const { drive } = getGoogleApis(req.user.accessToken, req.user.refreshToken);
 
         // 2. We use the Snapshot doc stored in the base commit as the actual raw material to copy!
-        // This copies the read-only commit into a fresh editable working document for the new branch.
+        // This copies the read-only commit into a fresh        // 3. Make a physical copy of the base Document natively
         const workDocName = `${branchName}_working_doc`;
         const newDocId = await copyDocument(drive, baseCommit.docId, workDocName, repo.driveFolderId);
 
-        // 3. Register the new branch in MongoDB
+        // 4. Force public access if repo is public
+        if (repo.visibility === 'public') {
+            await makeFilePublic(drive, newDocId);
+        }
+
+        // 5. Register new branch to databaseMongoDB
         const newBranch = await Branch.create({
             repoId: repo._id,
             name: branchName,
@@ -102,6 +107,10 @@ router.post('/merge', ensureAuth, async (req, res) => {
         // Duplicate the source document so the target has its own isolated copy
         const mergedName = `${target.name}_merged_from_${source.name}`;
         const newDocId = await copyDocument(drive, source.currentDocId, mergedName, repo.driveFolderId);
+
+        if (repo.visibility === 'public') {
+            await makeFilePublic(drive, newDocId);
+        }
 
         // Update target branch pointer
         const oldTargetDocId = target.currentDocId;

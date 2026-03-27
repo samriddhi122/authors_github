@@ -84,9 +84,42 @@ const copyDocument = async (drive, sourceDocId, newName, parentFolderId) => {
     return file.data.id;
 };
 
+/**
+ * Updates a Drive file or folder so anyone with the link can passively read it natively.
+ * Crucial step for cross-account Forking constraints!
+ */
+const makeFilePublic = async (drive, fileId) => {
+    await drive.permissions.create({
+        fileId: fileId,
+        requestBody: {
+            role: 'reader',
+            type: 'anyone'
+        }
+    });
+};
+
+/**
+ * Executes a high-privilege 1-to-1 Google Drive authorization grant explicitly overriding Public Link API limiters.
+ * Uses the Original Author's tokens to safely whitelist the specific Target User's email.
+ */
+const grantUserReadAccess = async (ownerAccessToken, ownerRefreshToken, fileId, targetEmail) => {
+    const { drive } = getGoogleApis(ownerAccessToken, ownerRefreshToken);
+    await drive.permissions.create({
+        fileId: fileId,
+        sendNotificationEmail: false,
+        requestBody: {
+            role: 'reader',
+            type: 'user',
+            emailAddress: targetEmail
+        }
+    });
+};
+
 module.exports = {
     getGoogleApis,
     createDriveFolder,
     createDocInFolder,
-    copyDocument
+    copyDocument,
+    makeFilePublic,
+    grantUserReadAccess
 };

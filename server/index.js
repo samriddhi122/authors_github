@@ -37,6 +37,7 @@ app.use('/auth', require('./routes/auth'));
 app.use('/repos', require('./routes/repo'));
 app.use('/repos/:repoId/commits', require('./routes/commit'));
 app.use('/repos/:repoId/branches', require('./routes/branch'));
+app.use('/repos/:repoId/pulls', require('./routes/pull'));
 
 app.get('/', (req, res) => {
     res.send('API is running...');

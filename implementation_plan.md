@@ -52,10 +52,10 @@ This document outlines the step-by-step plan for building StoryHub, prioritizing
 
 ## Phase 8: Fork + PR (5–7 Days)
 **Goal:** Launch community-driven collaborative features.
-- [ ] **Forking:** Build logic to recursively copy Drive files to a new user's Drive.
-- [ ] Create cloned repository records linked to the original.
-- [ ] **Pull Requests:** Build UI for comparing Source and Target branch metadata.
-- [ ] Implement Accept/Reject workflow for the repository owner.
+- [x] **Forking:** Build logic to recursively copy Drive files to a new user's Drive.
+- [x] Create cloned repository records linked to the original.
+- [x] **Pull Requests:** Build UI for comparing Source and Target branch metadata.
+- [x] Implement Accept/Reject workflow for the repository owner.
 
 ## Phase 9: UI Polish (Ongoing)
 **Goal:** Enhance user experience to feel like a premium product.

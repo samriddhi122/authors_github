@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Repository = require('../models/Repository');
 const Branch = require('../models/Branch');
-const { getGoogleApis, createDriveFolder, createDocInFolder } = require('../utils/googleDocs');
+const PullRequest = require('../models/PullRequest');
+const { getGoogleApis, createDriveFolder, createDocInFolder, makeFilePublic, copyDocument, grantUserReadAccess } = require('../utils/googleDocs');
 
 // Middleware to check authentication
 const ensureAuth = (req, res, next) => {
@@ -30,6 +31,12 @@ router.post('/', ensureAuth, async (req, res) => {
         // 2. Create the initial document (chapter1) inside that folder
         const initialDocId = await createDocInFolder(drive, 'chapter1', folderId);
 
+        // Guarantee native API permission boundaries if public
+        if (visibility === 'public' || !visibility) {
+            await makeFilePublic(drive, folderId);
+            await makeFilePublic(drive, initialDocId); // Explicitly required for Google Drive cross-account Fork accessibility!
+        }
+
         // 3. Save repository details mapped to the Drive folder in the DB
         const newRepo = await Repository.create({
             name,
@@ -55,6 +62,45 @@ router.post('/', ensureAuth, async (req, res) => {
     } catch (err) {
         console.error('Error creating repository:', err);
         res.status(500).json({ error: 'Failed to create repository' });
+    }
+});
+
+// @desc    Get all public repositories across the platform for Community Discovery
+// @route   GET /repos/public
+router.get('/public', ensureAuth, async (req, res) => {
+    try {
+        const publicRepos = await Repository.find({ visibility: 'public' })
+            .populate('ownerId', 'displayName image')
+            .sort({ createdAt: 'desc' });
+        res.json({ success: true, repositories: publicRepos });
+    } catch (err) {
+        console.error('Error fetching public repos:', err);
+        res.status(500).json({ error: 'Failed to fetch community stories' });
+    }
+});
+
+// @desc    Get all incoming PRs for the logged-in user
+// @route   GET /repos/notifications/pulls
+router.get('/notifications/pulls', ensureAuth, async (req, res) => {
+    try {
+        const myRepos = await Repository.find({ ownerId: req.user._id }).select('_id');
+        const repoIds = myRepos.map(r => r._id);
+
+        const incomingPrs = await PullRequest.find({ targetRepoId: { $in: repoIds }, status: 'open' })
+            .populate('sourceRepoId', 'name ownerId')
+            .populate('targetRepoId', 'name')
+            .populate('sourceBranchId', 'name')
+            .populate('targetBranchId', 'name')
+            .populate({
+                path: 'sourceRepoId',
+                populate: { path: 'ownerId', select: 'displayName image email' }
+            })
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, notifications: incomingPrs });
+    } catch (err) {
+        console.error('Error fetching global PR notifications:', err);
+        res.status(500).json({ error: 'Failed to fetch notifications' });
     }
 });
 
@@ -92,6 +138,63 @@ router.put('/:repoId/switch', ensureAuth, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server Error switching branches' });
+    }
+});
+
+// @desc    Fork a public repository to my own account
+// @route   POST /repos/:repoId/fork
+router.post('/:repoId/fork', ensureAuth, async (req, res) => {
+    try {
+        const originalRepo = await Repository.findById(req.params.repoId).populate('ownerId');
+        if (!originalRepo || originalRepo.visibility !== 'public') return res.status(404).json({ error: 'Repo not found or private' });
+        
+        // Bypassed for local testing so you can fork your own repositories!
+        // if (originalRepo.ownerId._id.toString() === req.user._id.toString()) return res.status(400).json({ error: 'Cannot fork your own repository' });
+
+        const existingFork = await Repository.findOne({ ownerId: req.user._id, forkedFrom: originalRepo._id });
+        if (existingFork) return res.status(400).json({ error: 'You already forked this storyline!' });
+
+        const { drive } = getGoogleApis(req.user.accessToken, req.user.refreshToken);
+
+        const folderId = await createDriveFolder(drive, `StoryHub_Fork_${originalRepo.name}`);
+
+        // EXPLICIT GRANT OVERRIDE: Original author silently whitelists the Forker's exact email address!
+        await grantUserReadAccess(
+            originalRepo.ownerId.accessToken, 
+            originalRepo.ownerId.refreshToken, 
+            originalRepo.currentDocId, 
+            req.user.email
+        );
+
+        // DELAY: We must pause execution while Google's global server farms propagate the new ACL permission!
+        await new Promise(resolve => setTimeout(resolve, 2500));
+
+        const forkedDocName = `${originalRepo.name} (Fork)`;
+        const newDocId = await copyDocument(drive, originalRepo.currentDocId, forkedDocName, folderId);
+
+        const newRepo = await Repository.create({
+            name: `${originalRepo.name} (Fork)`,
+            description: `Forked from ${originalRepo.ownerId.displayName}`,
+            visibility: 'public',
+            ownerId: req.user._id,
+            driveFolderId: folderId,
+            currentDocId: newDocId,
+            forkedFrom: originalRepo._id
+        });
+
+        await makeFilePublic(drive, folderId);
+        await makeFilePublic(drive, newDocId);
+
+        await Branch.create({
+            repoId: newRepo._id,
+            name: 'main',
+            currentDocId: newDocId
+        });
+
+        res.status(201).json({ success: true, repository: newRepo });
+    } catch (err) {
+        console.error('Error forking repo:', err);
+        res.status(500).json({ error: `Fork failed: ${err.message}` });
     }
 });
 

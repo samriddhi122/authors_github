@@ -4,7 +4,8 @@ const router = express.Router();
 
 // @desc    Auth with Google
 // @route   GET /auth/google
-const SCOPES = ['profile', 'email', 'https://www.googleapis.com/auth/drive.file'];
+// UPGRADED TO FULL DRIVE SCOPE TO PERMIT CROSS-ACCOUNT CLONING
+const SCOPES = ['profile', 'email', 'https://www.googleapis.com/auth/drive'];
 
 router.get('/google', passport.authenticate('google', {
     scope: SCOPES,

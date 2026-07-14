@@ -15,6 +15,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http
 const allowedOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'https://authors-github.vercel.app',
     FRONTEND_URL
 ].filter(Boolean);
 
@@ -28,10 +29,12 @@ app.use(cors({
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(null, false);
         }
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Sessions

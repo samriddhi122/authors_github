@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import './App.css';
 import Dashboard from './components/Dashboard';
 
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
+
 function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     const getUser = () => {
-      fetch('http://localhost:5000/auth/user', {
+      fetch(`${API_URL}/auth/user`, {
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "http://localhost:5000",
+          "Access-Control-Allow-Origin": API_URL,
           "Access-Control-Allow-Credentials": "true",
         },
         method: "GET",
@@ -31,11 +33,11 @@ function App() {
   }, []);
 
   const handleLogin = () => {
-    window.open('http://localhost:5000/auth/google', '_self');
+    window.open(`${API_URL}/auth/google`, '_self');
   };
 
   const handleLogout = () => {
-    window.open('http://localhost:5000/auth/logout', '_self');
+    window.open(`${API_URL}/auth/logout`, '_self');
   };
 
   return (

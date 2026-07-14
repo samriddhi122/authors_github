@@ -1,6 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const router = express.Router();
+const FRONTEND_URL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173';
 
 // @desc    Auth with Google
 // @route   GET /auth/google
@@ -19,8 +20,8 @@ router.get(
     '/google/callback',
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => {
-        // Successful authentication, redirect to client dashboard or home
-        res.redirect('http://localhost:5173/');
+        // Successful authentication, redirect to the configured frontend
+        res.redirect(FRONTEND_URL);
     }
 );
 
@@ -29,7 +30,7 @@ router.get(
 router.get('/logout', (req, res, next) => {
     req.logout((err) => {
         if (err) { return next(err); }
-        res.redirect('http://localhost:5173/');
+        res.redirect(FRONTEND_URL);
     });
 });
 

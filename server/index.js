@@ -11,20 +11,40 @@ require('./config/passport')(passport);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const FRONTEND_URL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173';
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    FRONTEND_URL
+].filter(Boolean);
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.set('trust proxy', 1);
+
 app.use(cors({
-    origin: 'http://localhost:5173', // Allow your client origin
-    credentials: true // Allow cookies to be sent/received
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
 }));
 
 // Sessions
 app.use(
     session({
-        secret: 'keyboard cat', // Change this in production
+        secret: process.env.SESSION_SECRET || 'keyboard cat',
         resave: false,
         saveUninitialized: false,
+        cookie: {
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        }
     })
 );
 

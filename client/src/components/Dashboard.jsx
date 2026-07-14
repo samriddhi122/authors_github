@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
+
 const Dashboard = ({ user, onLogout }) => {
   const [repos, setRepos] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -67,7 +69,7 @@ const Dashboard = ({ user, onLogout }) => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('http://localhost:5000/repos/notifications/pulls', { credentials: 'include' });
+      const res = await fetch(`${API_URL}/repos/notifications/pulls`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) setNotifications(data.notifications);
     } catch (err) { console.error('Error fetching notifications'); }
@@ -75,7 +77,7 @@ const Dashboard = ({ user, onLogout }) => {
 
   const fetchRepos = async () => {
     try {
-      const res = await fetch('http://localhost:5000/repos', { credentials: 'include' });
+      const res = await fetch(`${API_URL}/repos`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setRepos(data.repositories);
@@ -93,7 +95,7 @@ const Dashboard = ({ user, onLogout }) => {
     e.preventDefault();
     setCreating(true);
     try {
-      const res = await fetch('http://localhost:5000/repos', {
+      const res = await fetch(`${API_URL}/repos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -119,7 +121,7 @@ const Dashboard = ({ user, onLogout }) => {
     e.preventDefault();
     setCommitting(true);
     try {
-      const res = await fetch(`http://localhost:5000/repos/${activeRepo._id}/commits`, {
+      const res = await fetch(`${API_URL}/repos/${activeRepo._id}/commits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -145,7 +147,7 @@ const Dashboard = ({ user, onLogout }) => {
     setShowHistoryModal(true);
     setLoadingHistory(true);
     try {
-      const res = await fetch(`http://localhost:5000/repos/${repo._id}/commits`, { credentials: 'include' });
+      const res = await fetch(`${API_URL}/repos/${repo._id}/commits`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setCommitHistory(data.commits);
@@ -164,11 +166,11 @@ const Dashboard = ({ user, onLogout }) => {
     setShowBranchModal(true);
     setLoadingBranches(true);
     try {
-      const resB = await fetch(`http://localhost:5000/repos/${repo._id}/branches`, { credentials: 'include' });
+      const resB = await fetch(`${API_URL}/repos/${repo._id}/branches`, { credentials: 'include' });
       const dataB = await resB.json();
       if (dataB.success) setBranches(dataB.branches);
       
-      const resC = await fetch(`http://localhost:5000/repos/${repo._id}/commits`, { credentials: 'include' });
+      const resC = await fetch(`${API_URL}/repos/${repo._id}/commits`, { credentials: 'include' });
       const dataC = await resC.json();
       if (dataC.success) {
         setCommitHistory(dataC.commits);
@@ -185,7 +187,7 @@ const Dashboard = ({ user, onLogout }) => {
     e.preventDefault();
     if (!selectedCommitId) return alert('You must select a base commit to branch from!');
     try {
-      const res = await fetch(`http://localhost:5000/repos/${activeRepo._id}/branches`, {
+      const res = await fetch(`${API_URL}/repos/${activeRepo._id}/branches`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -204,7 +206,7 @@ const Dashboard = ({ user, onLogout }) => {
 
   const handleSwitchBranch = async (branchId) => {
     try {
-      const res = await fetch(`http://localhost:5000/repos/${activeRepo._id}/switch`, {
+      const res = await fetch(`${API_URL}/repos/${activeRepo._id}/switch`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -226,7 +228,7 @@ const Dashboard = ({ user, onLogout }) => {
     if (!window.confirm(`Are you absolutely sure? This will safely overwrite the Timeline of your Target Branch with the Source Branch's Google Document!`)) return;
     setMerging(true);
     try {
-      const res = await fetch(`http://localhost:5000/repos/${activeRepo._id}/branches/merge`, {
+      const res = await fetch(`${API_URL}/repos/${activeRepo._id}/branches/merge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -247,7 +249,7 @@ const Dashboard = ({ user, onLogout }) => {
 
   const fetchCommunityRepos = async () => {
     try {
-      const res = await fetch('http://localhost:5000/repos/public', { credentials: 'include' });
+      const res = await fetch(`${API_URL}/repos/public`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) setPublicRepos(data.repositories);
     } catch (err) { console.error('Error fetching community repos', err); }
@@ -256,7 +258,7 @@ const Dashboard = ({ user, onLogout }) => {
   const handleFork = async (repoId) => {
     if (!window.confirm('Fork this story into your own workspace? This isolates a new physical copy in your Google Drive!')) return;
     try {
-      const res = await fetch(`http://localhost:5000/repos/${repoId}/fork`, {
+      const res = await fetch(`${API_URL}/repos/${repoId}/fork`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
@@ -275,7 +277,7 @@ const Dashboard = ({ user, onLogout }) => {
   const loadPrs = async (repo) => {
     setActiveRepo(repo);
     try {
-      const res = await fetch(`http://localhost:5000/repos/${repo._id}/pulls`, { credentials: 'include' });
+      const res = await fetch(`${API_URL}/repos/${repo._id}/pulls`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setPrs({ incoming: data.incoming, outgoing: data.outgoing });
@@ -289,7 +291,7 @@ const Dashboard = ({ user, onLogout }) => {
   const handleAcceptPr = async (prId) => {
     if (!window.confirm("Merge this author's story branch securely into your Google Document timeline natively?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/repos/${activeRepo._id}/pulls/${prId}/merge`, {
+      const res = await fetch(`${API_URL}/repos/${activeRepo._id}/pulls/${prId}/merge`, {
         method: 'PUT',
         credentials: 'include'
       });
@@ -307,7 +309,7 @@ const Dashboard = ({ user, onLogout }) => {
   const handleAcceptGlobalPr = async (pr) => {
     if (!window.confirm("Merge this author's story branch securely into your Google Document timeline natively?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/repos/${pr.targetRepoId._id}/pulls/${pr._id}/merge`, {
+      const res = await fetch(`${API_URL}/repos/${pr.targetRepoId._id}/pulls/${pr._id}/merge`, {
         method: 'PUT',
         credentials: 'include'
       });
@@ -327,7 +329,7 @@ const Dashboard = ({ user, onLogout }) => {
     e.preventDefault();
     if (!newPrTitle || !prSourceBranchId) return alert('Title and Source Branch required');
     try {
-      const res = await fetch(`http://localhost:5000/repos/${activeRepo.forkedFrom}/pulls`, {
+      const res = await fetch(`${API_URL}/repos/${activeRepo.forkedFrom}/pulls`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
